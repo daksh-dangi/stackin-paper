@@ -90,9 +90,11 @@ class GradRegTrainer:
         '''
         computing the normalized advantage by subtracting the mean and dividing by std
         rewards tensor is of the shape (batch_size * G)
+
+        update: removed division by std as per Dr.GRPO paper
         '''
         rewards = rewards.reshape(-1, self.G)
-        adv = (rewards - rewards.mean(-1, keepdim=True))/(rewards.std(-1, keepdim=True)+1e-8)
+        adv = (rewards - rewards.mean(-1, keepdim=True))
 
         return adv.flatten()
 
@@ -173,19 +175,14 @@ class GradRegTrainer:
         this is necessary, to ensure we don't take the loss for all the padding tokens generated at the
         end of the squence (which can vary in length)
 
-        the final loss is computed over the average of the sum of every token; to further normalize the loss
-        and ensure a smoother training run. if it wasn't taken (i was confused, as the DeepSeek paper had a 
-        1/G normalizing term instead of a token level average), then the variable length of each trajectory would
-        add a lot of noise, as longer trajectories would have more terms contributing to the loss
-
-        the .sum() function at the end flattens the input (here, it becomes [batch_size * G * seq_len]) before taking
-        the sum; and since completion_mask is an array of 0s and 1s, where 0 specifies the ending padding tokens, we
-        are able to calculate the overall length of each generated sequence in the batch
+        update: to ensure adherence with the Dr.GRPO paper, removing the division by the total number of tokens,
+        and instead dividing by the group/batch size by taking the sum over the sequence dimension (dim=1), and averaging
+        over the batch length
         '''
         completion_loss = token_loss
         completion_mask = attention_mask[:, prompt_ids.shape[1]:]
 
-        final_loss = (completion_loss * completion_mask).sum() / completion_mask.sum()
+        final_loss = (completion_loss * completion_mask).sum(dim=1).mean()
         
         # for logging with tensorboard
         with torch.no_grad():
