@@ -105,24 +105,13 @@ class GradRegTrainer:
         logits = output_ids.logits
         
         '''
-        we need to run .contiguous on the below, because slicing pytorch tensors as done below actually creates a 
-        *view* that skips the specified dimensions/elements. because it creates this view, the resulting tensor is
-        incontiguous or fragmented. since pytorch performs vectorized memory acceses for operations like softmax,
-        this results in issues; which is why we need to use .contiguous()
-
         these elements are skipped since we don't need the log_probs for the eos_token, and since no token is predicted
         at the 0th time step
         '''
-        logits = logits[:, :-1, :].contiguous()
-        labels = input_ids[:, 1:].contiguous()
+        logits = logits[:, :-1, :]
+        labels = input_ids[:, 1:]
 
-        log_probs = F.log_softmax(logits, dim=-1)
-
-        '''
-        log_probs contains a dimension for each word in the vocab, and labels contains the index of the ground truth token 
-        to be predicted; and we only want the log_prob the model attributed to this token which is why we use torch.gather
-        '''
-        log_probs = torch.gather(log_probs, dim=-1, index=labels.unsqueeze(-1)).squeeze(-1)
+        log_probs = -F.cross_entropy(logits.flatten(0, 1), labels.flatten(), reduction='none').view(labels.shape)
         
         return log_probs
 
@@ -227,7 +216,7 @@ class GradRegTrainer:
             advantages = self.compute_advantages(rewards_tensor)
             rollout_data["advantages"] = advantages
 
-        self.optimizer.zero_grad()
+        self.optimizer.zero_grad(set_to_none=True)
         loss, metrics = self.compute_loss(rollout_data)
         loss.backward()
         
@@ -257,7 +246,7 @@ class GradRegTrainer:
                     param.add_(g1[name], alpha=self.epsilon)
                 
         loss_perturbed = self.compute_loss(rollout_data)
-        self.optimizer.zero_grad()
+        self.optimizer.zero_grad(set_to_none=True)
         loss_perturbed.backward()
         
         with torch.no_grad():
