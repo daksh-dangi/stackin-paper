@@ -7,7 +7,7 @@ import os
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
 from functools import partial
-from transformers.models.qwen2.modeling_qwen2 import Qwen2DecoderLayer
+from transformers.models.qwen3.modeling_qwen3 import Qwen3DecoderLayer
 from utils import *
 
 
@@ -46,9 +46,15 @@ class GradRegTrainer:
         '''
         setup_distributed()
         local_rank = int(os.environ["LOCAL_RANK"])
-        my_wrap_policy = partial(transformer_auto_wrap_policy, transformer_layer_cls={Qwen2DecoderLayer})
-        self.policy_model = FSDP(policy_model, auto_wrap_policy=my_wrap_policy, device_id=local_rank)
-        self.ref_model = FSDP(ref_model, auto_wrap_policy=my_wrap_policy, device_id=local_rank)
+        my_wrap_policy = partial(transformer_auto_wrap_policy, transformer_layer_cls={Qwen3DecoderLayer})
+        '''
+        here, use_orig_params is used, as FSDP shards the weights across multiple GPUs, where each GPU accesses
+        only parts of parameter set. Each shard accesses these weights as a 1D tensor "FlatParameter" object. If we
+        were to pass this object to the optimizer, we would face issues. This is why we pass the flag, to ensure
+        the original parameters are passed to the optimizer
+        '''
+        self.policy_model = FSDP(policy_model, auto_wrap_policy=my_wrap_policy, device_id=local_rank, use_orig_params=True)
+        self.ref_model = FSDP(ref_model, auto_wrap_policy=my_wrap_policy, device_id=local_rank, use_orig_params=True)
         
         self.optimizer = AdamW(self.policy_model.parameters(), lr=lr)
         self.tokenizer = AutoTokenizer.from_pretrained(policy_model)
@@ -74,7 +80,10 @@ class GradRegTrainer:
         
         completion_mask = (completion_ids != self.tokenizer.pad_token_id).long()
         full_attention_mask = torch.cat([inputs.attention_mask, completion_mask], dim=1)
-        old_log_probs = self.get_per_token_logps(self.policy_model, output_ids, full_attention_mask)
+
+        # need to wrap this in torch.no_grad to ensure computation graph for this isn't generated
+        with torch.no_grad():
+            old_log_probs = self.get_per_token_logps(self.policy_model, output_ids, full_attention_mask)
 
         completion_text = self.tokenizer.batch_decode(completion_ids, skip_special_tokens=True)
 
@@ -82,7 +91,7 @@ class GradRegTrainer:
             "prompt_ids": inputs.input_ids,
             "completion_ids": completion_ids,
             "completions_text": completion_text,
-            "attention_mask": inputs.attention_mask,
+            "attention_mask": full_attention_mask,
             "old_log_probs": old_log_probs
         }
 
@@ -242,7 +251,7 @@ class GradRegTrainer:
                     '''
                     param.add_(g1[name], alpha=self.epsilon)
                 
-        loss_perturbed = self.compute_loss(rollout_data)
+        loss_perturbed, _ = self.compute_loss(rollout_data)
         self.optimizer.zero_grad(set_to_none=True)
         loss_perturbed.backward()
         
@@ -267,33 +276,6 @@ class GradRegTrainer:
         self.optimizer.step()
         
         return metrics
-    
-    def evaluate(self, eval_prompts: List[str], eval_ground_truths: List[str], batch_size: int = 8) -> Dict[str, float]:
-        # to disable dropout layers
-        self.policy_model.eval()
-        all_rewards = []
-        
-        with torch.no_grad():
-            for i in range(0, len(eval_prompts), batch_size):
-                batch_prompts = eval_prompts[i:i + batch_size]
-                batch_truths = eval_ground_truths[i:i + batch_size]
-                
-                inputs = self.tokenizer(batch_prompts, padding=True, return_tensors="pt").to(self.policy_model.device)
-                
-                # greedy generation, so we disable sampling
-                output_ids = self.policy_model.generate(**inputs,do_sample=False,max_new_tokens=512)
-                
-                prompt_length = inputs.input_ids.shape[1]
-                completion_ids = output_ids[:, prompt_length:]
-                
-                completions_text = self.tokenizer.batch_decode(completion_ids, skip_special_tokens=True)
-                rewards = self.reward_fn(completions_text, batch_truths)
-                all_rewards.extend(rewards)
-                
-        # Pass@1 for eval 
-        binary_rewards = [1.0 if r > 0 else 0.0 for r in all_rewards]
-        
-        return {"eval_pass_at_1": sum(binary_rewards) / len(binary_rewards), "eval_mean_reward": sum(all_rewards) / len(all_rewards)}
     
     '''
     due to frequent OOM issues with GRPO training runs, need to ensure we checkpoint frequently
