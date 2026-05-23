@@ -11,9 +11,9 @@
         "id": "powersampling",
         "name": "Power Sampling",
         "description": "Replicating RL's policy sharpening at inference",
-        "icon": "🌿",
+        "icon": "🌳",
         "url": "https://github.com/daksh-dangi/stackin-paper/tree/main/PowerSampling",
-        "summary": "Inference time sampling technique using a power distribution and MCMC that tries to match the effects of RL on the model's policy."
+        "summary": "Inference time sampling technique using a power distribution and MCMC that aims to match the effects of RL on the model's policy."
     },
     {
         "id": "selfdistillation",

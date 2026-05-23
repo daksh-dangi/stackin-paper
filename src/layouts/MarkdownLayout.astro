@@ -1,13 +1,11 @@
 ---
 interface Props {
-	// Astro passes markdown properties inside the 'frontmatter' object
 	frontmatter?: {
 		title: string;
 		date?: string;
 		description?: string;
 		[key: string]: any;
 	};
-	// Fallbacks in case the layout is used as a standard component
 	title?: string;
 	date?: string;
 	description?: string;
@@ -15,7 +13,6 @@ interface Props {
 
 const { frontmatter, ...props } = Astro.props;
 
-// Safely grab the variables whether passed via markdown frontmatter or direct props
 const title = frontmatter?.title || props.title;
 const date = frontmatter?.date || props.date;
 const description = frontmatter?.description || props.description;
@@ -28,9 +25,16 @@ const base = import.meta.env.BASE_URL;
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href=`${base}/favicon.svg` />
+		<link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
 		<title>{title}</title>
 		<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+		
+		<link 
+			rel="stylesheet" 
+			href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" 
+			integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" 
+			crossorigin="anonymous"
+		/>
 	</head>
 	<body class="bg-slate-50 font-sans selection:bg-blue-200">
 		
@@ -48,17 +52,16 @@ const base = import.meta.env.BASE_URL;
 						<div id="paper-2" class="absolute w-full h-[1px] bg-slate-500" style="transform: translateY(-40px); opacity: 0;"></div>
 					</div>
 
-					<a href=`${base}/` class="text-xl md:text-3xl font-serif italic tracking-tight text-[#bdaa8b]">Stackin Paper</a>
+					<a href={`${base}/`} class="text-xl md:text-3xl font-serif italic tracking-tight text-[#bdaa8b]">Stackin Paper</a>
 				</div>
 
 				<div class="flex gap-8 font-mono text-m font-bold uppercase text-[#bdaa8b]">
-					<a href=`${base}/researchlog` class="hover:text-blue-600 transition-colors">/logs</a>
+					<a href={`${base}/researchlog`} class="hover:text-blue-600 transition-colors">/logs</a>
 				</div>
 			</div>
 		</nav>
 
 		<main class="max-w-3xl mx-auto px-6 py-12">
-    
 			<header class="mb-8 pb-6 border-b border-slate-200/60">
 				{date && <time class="block mb-2 text-sm font-mono text-slate-500">{date}</time>}
 				
@@ -67,7 +70,7 @@ const base = import.meta.env.BASE_URL;
 				{description && <p class="text-base text-slate-600 leading-relaxed">{description}</p>}
 			</header>
 
-			<article class="prose prose-slate max-w-3xl mx-auto prose-headings:text-black [&>*:first-child]:!mt-0">
+			<article class="prose prose-slate max-w-3xl mx-auto prose-headings:text-black [&>*:first-child]:!mt-0 break-words subpixel-antialiased">
 				<slot />
 			</article>
 
@@ -82,21 +85,17 @@ const base = import.meta.env.BASE_URL;
 
 			window.addEventListener('scroll', () => {
 				const currentScrollY = window.scrollY;
-				// Ensures papers always fall down by adding the absolute change in scroll
 				totalDelta += Math.abs(currentScrollY - lastScrollY);
 				lastScrollY = currentScrollY;
 
 				const loopDistance = 140; 
 				
-				// Calculate progress for two papers staggered by 50%
 				const progress1 = (totalDelta % loopDistance) / loopDistance;
 				const progress2 = ((totalDelta + (loopDistance / 2)) % loopDistance) / loopDistance;
 
 				const animate = (el, progress) => {
 					if (!el) return;
-					// Falling from top of container to the bottom stack
 					const y = -30 + (progress * 30);
-					// Quick fade in at top, fade out as it merges with the stack
 					const opacity = progress < 0.1 ? progress * 10 : (1 - progress) * 1.5;
 					
 					el.style.transform = `translateY(${y}px)`;
@@ -120,5 +119,17 @@ const base = import.meta.env.BASE_URL;
 		margin: 0;
 		padding: 0;
 		min-height: 200vh;
+	}
+
+	/* Prevents wide LaTeX formulas from breaking layout while keeping them centered */
+	.katex-display {
+		display: block; /* Restores KaTeX's default layout */
+		text-align: center; /* Ensures the inner math nodes are centered */
+		width: 100%;
+		margin: 1.5rem 0 !important;
+		overflow-x: auto;
+		overflow-y: hidden;
+		padding-top: 0.5rem; /* Optional: prevents vertical clipping of tall math (e.g. integrals/fractions) during overflow */
+		padding-bottom: 0.5rem;
 	}
 </style>
