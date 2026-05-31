@@ -1,19 +1,27 @@
 [
     {
         "id": "grpo",
-        "name": "GRPO + GR",
+        "name": "GradReg",
         "description": "Explicit Gradient Regularization within GRPO",
         "icon": "🌳",
-        "url": "https://github.com/daksh-dangi/stackin-paper/tree/main/Gradient-Reg",
-        "summary": "This research explores explicit gradient regularization applied during GRPO training for large language models, aimed at improving convergence and reducing catastrophic forgetting."
+        "url": "https://github.com/daksh-dangi/stackin-code/tree/main/Gradient-Reg",
+        "summary": "Implemented explicit Gradient Regularization in a Dr.GRPO pipeline; found it generalizes well, but collapses into repetitive loops. Traced the cause to uniform regularization via mechanistic analysis, & redesigned it as a depth-scaled regularization that addresses the collapse and further improves OOD generalization."
+    },
+    {
+        "id": "gradmem",
+        "name": "GradMem",
+        "description": "Learning to write context into memory at test time",
+        "icon": "🌿",
+        "url": "#",
+        "summary": "An alternate form of memory compression that involves test-time Gradient Descent to continually 'bake in' knowledge into the model."
     },
     {
         "id": "powersampling",
         "name": "Power Sampling",
         "description": "Replicating RL's policy sharpening at inference",
         "icon": "🌳",
-        "url": "https://github.com/daksh-dangi/stackin-paper/tree/main/PowerSampling",
-        "summary": "Inference time sampling technique using a power distribution and MCMC that aims to match the effects of RL on the model's policy."
+        "url": "https://github.com/daksh-dangi/stackin-code/tree/main/PowerSampling",
+        "summary": "Inference time sampling technique using a power distribution and MCMC approximations that aims to match the effects of RL on a model's policy."
     },
     {
         "id": "selfdistillation",
@@ -21,14 +29,6 @@
         "description": "Performing SDFT on domain specific knowledge",
         "icon": "🌿",
         "url": "#",
-        "summary": "Investigating the efficacy of SDFT on OOD tasks - specifically on corporate specific information - and comparing them against Experiential RL."
-    },
-    {
-        "id": "project4",
-        "name": "GradMem",
-        "description": "Learning to write context into memory at inference time",
-        "icon": "🌱",
-        "url": "#",
-        "summary": "An alternate form of memory compressino that involves test-time Gradient Descent to continually 'bake in' knowledge into the model."
+        "summary": "Investigating the efficacy of SDFT on OOD tasks - specifically on corporate specific information."
     }
 ]

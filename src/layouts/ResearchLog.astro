@@ -175,6 +175,10 @@ const projects = researchData.map(project => ({
     const baseInfo = card.querySelector('.base-info') as HTMLElement;
     if (!inner || !baseInfo) return;
 
+    // On phones/touch screens the cards render permanently expanded via CSS,
+    // so skip the hover-to-expand behaviour entirely.
+    if (window.matchMedia('(max-width: 767px)').matches) return;
+
     const originalWidth = (card as HTMLElement).offsetWidth;
     const codeLabel = card.querySelector('.code-label') as HTMLElement;
     const summaryText = card.querySelector('.summary-text') as HTMLElement;
@@ -183,9 +187,30 @@ const projects = researchData.map(project => ({
     const expandedPanel = card.querySelector('.expanded-panel') as HTMLElement;
     const expandedGradient = card.querySelector('.expanded-gradient') as HTMLElement;
     let isExpanded = false;
+    let collapseRaf = 0; // pending "restore" frame from a collapse, if any
 
     card.addEventListener('mouseenter', () => {
+      // Ignore repeat enters (can fire during fast scroll) so we don't
+      // re-run the expand on an already-open card.
+      if (isExpanded) return;
       isExpanded = true;
+
+      // A previous collapse may have left the card hidden / transition-disabled
+      // with a restore frame still pending. Cancel it and bring the card back
+      // to a clean, visible, animatable state before expanding — otherwise the
+      // stale frame fires mid-expand and the card glitches.
+      if (collapseRaf) {
+        cancelAnimationFrame(collapseRaf);
+        collapseRaf = 0;
+      }
+      inner.style.visibility = 'visible';
+      inner.style.transition = 'all 500ms cubic-bezier(0.25, 1, 0.5, 1)';
+      if (codeLabel) codeLabel.style.transition = 'all 300ms ease';
+      if (summaryText) summaryText.style.transition = 'all 300ms ease';
+      if (repoLink) repoLink.style.transition = 'all 300ms ease';
+      if (expandedPanel) expandedPanel.style.transition = 'opacity 200ms ease';
+      if (expandedGradient) expandedGradient.style.transition = 'opacity 200ms ease';
+
       if (backdrop) {
         backdrop.style.backgroundColor = 'rgba(0,0,0,0.15)';
       }
@@ -277,7 +302,11 @@ const projects = researchData.map(project => ({
       }
 
       // Show collapsed card on the next frame (after layout has settled)
-      requestAnimationFrame(() => {
+      collapseRaf = requestAnimationFrame(() => {
+        collapseRaf = 0;
+        // A re-enter may have happened before this frame ran; if so, the
+        // mouseenter handler has already normalized state — don't fight it.
+        if (isExpanded) return;
         inner.style.visibility = 'visible';
         inner.style.transition = 'all 500ms cubic-bezier(0.25, 1, 0.5, 1)';
         if (codeLabel) codeLabel.style.transition = 'all 300ms ease';
@@ -289,3 +318,64 @@ const projects = researchData.map(project => ({
     });
   });
 </script>
+
+<style>
+  /* On phones, hover-to-expand doesn't work, so render every card fully
+     expanded as a vertical stack: project info on top, articles below.
+     !important overrides the collapsed inline styles set in the markup/JS. */
+  @media (max-width: 767px) {
+    .research-card {
+      height: auto !important;
+    }
+
+    .card-inner {
+      position: relative !important;
+      width: 100% !important;
+      height: auto !important;
+      flex-direction: column !important;
+      box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .base-info {
+      width: 100% !important;
+      min-width: 0 !important;
+      justify-content: flex-start !important;
+      align-items: stretch !important;
+      padding-top: 1.5rem !important;
+      padding-bottom: 1.5rem !important;
+    }
+
+    .text-col {
+      height: auto !important;
+    }
+
+    .code-label {
+      opacity: 1 !important;
+      height: auto !important;
+      margin-bottom: 1rem !important;
+    }
+
+    .summary-text {
+      opacity: 1 !important;
+      height: auto !important;
+      margin-top: 1.5rem !important;
+    }
+
+    .repo-link {
+      opacity: 1 !important;
+      height: auto !important;
+      margin-top: 0.75rem !important;
+      overflow: visible !important;
+    }
+
+    /* The side gradient bridge only makes sense in the horizontal layout */
+    .expanded-gradient {
+      display: none !important;
+    }
+
+    .expanded-panel {
+      opacity: 1 !important;
+      border-radius: 0 0 1rem 1rem !important;
+    }
+  }
+</style>

@@ -4,18 +4,25 @@ interface Props {
 		title: string;
 		date?: string;
 		description?: string;
+		tldr?: string;
 		[key: string]: any;
 	};
 	title?: string;
 	date?: string;
 	description?: string;
+	tldr?: string;
 }
+
+import projectsData from '../data/projects.json';
 
 const { frontmatter, ...props } = Astro.props;
 
 const title = frontmatter?.title || props.title;
 const date = frontmatter?.date || props.date;
-const description = frontmatter?.description || props.description;
+const tldr = frontmatter?.tldr || props.tldr;
+const projectId = frontmatter?.project;
+const project = projectsData.find(p => p.id === projectId);
+const projectUrl = project?.url && project.url !== '#' ? project.url : null;
 
 const base = import.meta.env.BASE_URL;
 ---
@@ -67,7 +74,12 @@ const base = import.meta.env.BASE_URL;
 				
 				<h1 class="mb-3 text-3xl sm:text-4xl font-bold text-[#bdaa8b]">{title}</h1>
 				
-				{description && <p class="text-base text-slate-600 leading-relaxed">{description}</p>}
+				{tldr && <p class="text-base text-slate-600 leading-relaxed"><span class="font-semibold text-black">TL;DR:</span> {tldr}</p>}
+				{projectUrl && (
+					<a href={projectUrl} target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 mt-2 font-mono text-xs font-bold uppercase tracking-widest text-blue-600 hover:text-blue-800 transition-colors">
+						View Repository <span>→</span>
+					</a>
+				)}
 			</header>
 
 			<article class="prose prose-slate max-w-3xl mx-auto prose-headings:text-black [&>*:first-child]:!mt-0 break-words subpixel-antialiased">

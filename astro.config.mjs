@@ -5,7 +5,7 @@ import rehypeKatex from 'rehype-katex';
 
 export default defineConfig({
   site: 'https://daksh-dangi.github.io',
-  base: '/stacking-paper',
+  base: '/stackin-paper',
   integrations: [tailwind()],
   markdown: {
     remarkPlugins: [remarkMath],
