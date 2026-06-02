@@ -31,6 +31,15 @@ This works hand-in-hand with the objective of the explicit gradient regularizati
 
 The above tables show the results of the new experimental method. It outperforms every other method (vanilla GRPO, base model, and regular GradReg) by a ~3.5 point margin in GPQA, and critically *retains* base model performance for the OOD History+Math MMLU eval set ! For GPQA, with n=3 and overlapping standard deviations, I treat this as a consistent directional improvement, rather than a statistically conclusive one. Every individual gradReg Decay trial lands at or above the base's mean, which is suggestive, but not conclusive in and of itself. The results seem to support the aspect of generalizability without degradation of base model performance, but I'd want more runs to claim significance. The GPQA eval run uses greedy decoding (temp 0.0) since it's hard reasoning where I want the model's top choice, while MMLU uses sampling (temp 0.6) to evaluate across its broader answer distribution.
 
+[EDIT 05/18]: I re-ran the eval on GPQA Diamond but using temp 0.6 instead of Greedy Decoding, as I was reading some papers that pointed this very thing out (using Greedy Decoding over sampling) as an evaluation pitfall. Shown below is an updated table with N=5 samples and temp=0.6. I still think greedy decoding better reflects top-choice capability on hard reasoning, but non-zero temp results carry merit, so here's the sampled comparison. *Under the sampled decoding setup, the ~3.5 point gap narrows to a ~1 point and the methods are no longer cleanly separated.*
+
+| Model | GPQA Diamond (Avg ± Std) |
+|---|---|
+| gradReg_decay | 67.17 ± 1.86 |
+| gradReg | 66.97 ± 1.32 |
+| base | 66.26 ± 1.09 |
+| grpo | 66.06 ± 1.21 |
+
 A closer look at the model's entropy reveals that the architectural tweaks I made were the correct decision, as they prevented the deeper layers from becoming overly rigid and succumbing to entropy collapse. Unlike the entropy graph for vanilla Gradient Regularization, which showed the entropy for GradReg basically superimposing over that of the base model, this graph exhibits large peaks - highlighting the clear structural change that has occurred within the model.
 ![GradReg Decay Entropy](../images/gr_decay-entropy.png)
 
